@@ -10,7 +10,12 @@
 #initial author Jessica Rothman
 
 NECESSARY FILES
-#will need to read in cases from downloaded csv from covidestim.org 
-#that is put it your working directory
-#be sure to download the latest version
+1. estimates.csv (covid infections by state)
+You will need to read in cases from downloaded csv from covidestim.org 
+keep name estimate.csv and put it into your data_input folder
+
+2. Frequency table
+ [variant_frequencies.csv](https://github.com/rtobiaskoch/Rt_v2/files/7017913/variant_frequencies.csv)
+
+
 
