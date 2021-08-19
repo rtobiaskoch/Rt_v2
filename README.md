@@ -6,7 +6,7 @@
 
 #initial date: 2021/08/19
 #author: Tobias Koch 
-#email: r.tobiaskoch#gmail.com or toby.koch@yale.edu
+#email: r.tobiaskoch@gmail.com or toby.koch@yale.edu
 #initial author Jessica Rothman
 
 NECESSARY FILES
