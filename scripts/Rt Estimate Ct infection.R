@@ -33,40 +33,61 @@ rm(packages)
 set.seed(1234)
 
 #*******************************************************************************
-##### GLAB DATA IMPORT#####
+#####DATA IMPORT#####
 #*#*******************************************************************************
 
 #importing rt data from CT-Yale Variant results googlesheet
 #if you don't have access to the sheet or can't get googlesheets to work download
 #and import it
-var_import <- read_sheet("12xYePgxeF3pi0YiGnDCzmBnPPqZEASuobZ1DXeWZ7QA", sheet = "Rt")
+
+#GOOGLESHEET DOWNLOAD FROM GRUBAUGH LABS GDRIVE
+#note that column names will be slightly different
+#var_import <- read_sheet("12xYePgxeF3pi0YiGnDCzmBnPPqZEASuobZ1DXeWZ7QA", sheet = "Rt")
+
+#this is aggregated state variant frequency data
+#please see readme for example format
+var_import = read.csv("data_input/variant_frequencies.csv")
+infect_import = read.csv("data_input/estimates.csv")
 
 #*******************************************************************************
 #####GLAB DATA CLEAN#####
 #*#*******************************************************************************
 
 #imported at beginning
+
+#identifies variant columns and renames them to the format of the rest of code
 var_data = var_import %>%
-  rename(alpha_prop = `Freq Alpha`,
-         delta_prop = `Freq Delta`,
-         gamma_prop = `Freq Gamma`,
-         iota_prop = `Freq Iota`,
-         b1621_prop = `Freq B.1.621`,
-  ) %>% #rename to match variables in rest of code
-  filter(!is.na(n)) #removes blank columns
+  rename_at(vars(contains("alpha")),
+                 funs(paste("alpha","_prop",sep = ""))
+            ) %>%
+  rename_at(vars(contains("delta")),
+            funs(paste("delta","_prop",sep = ""))
+            ) %>%
+  rename_at(vars(contains("gamma")),
+            funs(paste("gamma","_prop",sep = ""))
+             ) %>%
+  rename_at(vars(contains("iota")),
+            funs(paste("iota","_prop",sep = ""))
+            ) %>%
+  rename_at(vars(contains("b.1.621")),
+            funs(paste("b.1.621","_prop",sep = ""))
+             ) %>% #rename to match variables in rest of code
+  filter(!is.na(n)) %>% #removes blank columns
+  mutate(Date = as.Date(Date)) #converts date from string to date for merging
 
 #*******************************************************************************
 ##### Covidestim.org#####
 #*#*******************************************************************************
 #will need to read in cases from downloaded csv from covidestim.org 
-#that is put it your working directory
-#be sure to download the latest version
-infect_import = read.csv("estimates.csv")
+#that is put it your working directory this is done in line 48 in the data import section
 infect = infect_import %>%
   select(state,
          date,
          infections) %>%
-  filter(state == "Connecticut") %>% #filter only CT
+  #**************EDIT BY STATE HERE*********
+  filter(state == "Connecticut") %>% #filter only CT 
+  #*****************************************
+  
   rename(Date = date) %>% #rename for merging with var_data
   mutate(Date = as.Date(Date)) #reformat to match var_data
 
@@ -80,12 +101,12 @@ var_merge = var_data %>%
          delta_infections        = infections*delta_prop,
          gamma_infections        = infections*gamma_prop,
          iota_infections    = infections*iota_prop,
-         b1621_infections = infections*b1621_prop) %>%
+         b.1.621_infections = infections*b.1.621_prop) %>%
   mutate(alpha_n        = n*alpha_prop,
          delta_n        = n*delta_prop,
          gamma_n        = n*gamma_prop,
          iota_n    = n*iota_prop,
-         b1621_n = n*b1621_prop)
+         b.1.621_n = n*b.1.621_prop)
 
 #*******************************************************************************
 #####ROLLING 7 DAY AVG FOR RT #####
@@ -96,20 +117,20 @@ daily_7<- var_merge %>%
   mutate(alpha_n7 =         rollmean(alpha_n, k = 7, fill = NA),
          gamma_n7 =         rollmean(gamma_n, k = 7, fill = NA),
          delta_n7 =         rollmean(delta_n, k = 7, fill = NA),
-         b1621_n7 =  rollmean(b1621_n, k = 7, fill = NA),
+         b.1.621_n7 =  rollmean(b.1.621_n, k = 7, fill = NA),
          iota_n7 =     rollmean(iota_n, k = 7, fill = NA),
          n_7 =              rollmean(n, k = 7, fill = NA)) %>%
   #7 day rolling avg for frequency(prop aka proportion)
   mutate(alpha_prop7 =         rollmean(alpha_prop, k = 7, fill = NA),
          gamma_prop7 =         rollmean(gamma_prop, k = 7, fill = NA),
          delta_prop7 =         rollmean(delta_prop, k = 7, fill = NA),
-         b1621_prop7 =  rollmean(b1621_prop, k = 7, fill = NA),
+         b.1.621_prop7 =  rollmean(b.1.621_prop, k = 7, fill = NA),
          iota_prop7 =     rollmean(iota_prop, k = 7, fill = NA))%>%
   #7 day rolling avg calculate by 7 day roll avg frequency pf variant * new infections
   mutate(alpha_infections7 = alpha_prop7 * infections,
          gamma_infections7 = gamma_prop7 * infections,
          delta_infections7 = delta_prop7 * infections,
-         b1621_infections7 = b1621_prop7 * infections,
+         b.1.621_infections7 = b.1.621_prop7 * infections,
          iota_infections7 = iota_prop7 * infections) %>%
   drop_na #drops future dates and first 3 days because of rollmean 
 
@@ -150,10 +171,8 @@ ci_fun <- function(v, nn, name, c){
 alpha_df = ci_fun(daily_7$alpha_n7, daily_7$n_7, "alpha")
 gamma_df = ci_fun(daily_7$gamma_n7, daily_7$n_7, "gamma")
 delta_df = ci_fun(daily_7$delta_n7, daily_7$n_7, "delta")
-b1621_df = ci_fun(daily_7$b1621_n7, daily_7$n_7, "b1621")
+b.1.621_df = ci_fun(daily_7$b.1.621_n7, daily_7$n_7, "b.1.621")
 iota_df = ci_fun(daily_7$iota_n7, daily_7$n_7, "iota")
-
-
 
 #*******************************************************************************
 #RT FUNCTION ####
@@ -212,7 +231,7 @@ rt_fun= function(df, name){
 
 alpha_rt = rt_fun(alpha_df, "alpha")
 gamma_rt = rt_fun(gamma_df, "gamma")
-b1621_rt = rt_fun(b1621_df, "b1621")
+b.1.621_rt = rt_fun(b.1.621_df, "b.1.621")
 iota_rt = rt_fun(iota_df, "iota")
 delta_rt = rt_fun(delta_df, "delta")
 
@@ -225,7 +244,7 @@ delta_rt = rt_fun(delta_df, "delta")
 rt_list = list(alpha_rt,
                gamma_rt,
                delta_rt,
-               b1621_rt,
+               b.1.621_rt,
                iota_rt)
 
 #new merged file that selects only the necessary variables
@@ -244,9 +263,9 @@ rt_export <- rt_list %>%
          iota_Rt, #iota
          iota_rtlowci,
          iota_rtupci,
-         b1621_Rt, #b1621
-         b1621_rtlowci,
-         b1621_rtupci
+         b.1.621_Rt, #b.1.621
+         b.1.621_rtlowci,
+         b.1.621_rtupci
   ) %>%
   filter_at(2:ncol(.), #filter all coloumns but the first column which is the date
             any_vars(!is.na(.))) #remove any rows where there is no data
@@ -264,7 +283,6 @@ p <- rt_plot %>%
   ggplot(aes(x = Date, y = rt, color = variant, fill = variant)) +
                         geom_line()
                         
-p                       
 
 #*******************************************************************************
 #REFORMAT####
@@ -326,30 +344,50 @@ rt_export2 = rt_export %>%
             `Iota-low` = iota_rtlowci,
             `Iota-high` = iota_rtupci,
             #OTHER
-            Other = b1621_Rt, 
+            Other = b.1.621_Rt, 
             `Other-CI` = paste(month(Date),"/",day(Date),
                                ": ", 
-                               b1621_Rt,
+                               b.1.621_Rt,
                                " (",
-                               b1621_rtlowci,
+                               b.1.621_rtlowci,
                                ", ",
-                               b1621_rtupci,
+                               b.1.621_rtupci,
                                ")",sep =""),
-            `Other-low` = b1621_rtlowci,
-            `Other-high` = b1621_rtupci,
+            `Other-low` = b.1.621_rtlowci,
+            `Other-high` = b.1.621_rtupci,
   )
 #*******************************************************************************
 #EXPORT####
 #*******************************************************************************
-#*
 #export directly back into the google sheet that we use "CT-Yale Variant results
 #creates sheet name with the first and last date in dataframe
-sheetname = paste("Rt_out", min(rt_export2$`First day of week`), "to", max(rt_export2$`First day of week`), sep = " ")
-#exports to sheet that stores as a history
-write_sheet(rt_export2, "1IskdjyQI4N6cCVO2s_hqStltEZ-q091VjAATrovfTjk", sheet = sheetname)
 
-#exports most recent rt data to ct visualizer sheet for others to reference
-write_sheet(rt_export2, "12xYePgxeF3pi0YiGnDCzmBnPPqZEASuobZ1DXeWZ7QA", sheet = "rt_R_output")
+rt_name = paste("data_output/Rt_estimates ", 
+                min(rt_export2$`First day of week`), 
+                " to ", max(rt_export2$`First day of week`),
+                ".csv", 
+                sep = "")
+
+rt_reformat_name = paste("data_output/Rt_estimate_reformat ", 
+                         min(rt_export2$`First day of week`), 
+                         " to ", 
+                         max(rt_export2$`First day of week`),
+                         ".csv", 
+                         sep = "")
+
+#writes csv for rt estimates
+write.csv(rt_export, rt_name)
+
+#writes csv for reformatted
+write.csv(rt_export2, rt_reformat_name)
+
+#print the plot for double check
+png("data_output/rt_plot.png", width = 800, height = 400)
+p
+dev.off()
+
+
+
 
 
 
