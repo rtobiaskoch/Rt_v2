@@ -1,9 +1,10 @@
-# Rt_v2
+Rt_v2
 
-#initial date: 2021/08/19
-#author: Tobias Koch 
-#email: r.tobiaskoch@gmail.com or toby.koch@yale.edu
-#contributing author Jessica Rothman
+initial date: 2021/08/19
+author: Tobias Koch 
+email: r.tobiaskoch@gmail.com or toby.koch@yale.edu
+contributing author: Jessica Rothman
+email: jessica.rothman@yale.edu
 
 PURPOSE: This is the second version of the Rt calculation for covidtrackerct.org
 of variants. IT has been rewritten to be reproducible by any state. Case numbers pulled from
