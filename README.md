@@ -56,5 +56,7 @@ SUMMARY CALCULATIONS BEING DONE
  3. the Rt_estimate.csv
  4. reformatted Rt_estimates (this is specific to the covidtrackerCt.com website)
 
-
+CITATIONS
+Estimate_R
+Anne Cori, Neil M. Ferguson, Christophe Fraser, Simon Cauchemez, A New Framework and Software to Estimate Time-Varying Reproduction Numbers During Epidemics, American Journal of Epidemiology, Volume 178, Issue 9, 1 November 2013, Pages 1505–1512, https://doi.org/10.1093/aje/kwt133
 
