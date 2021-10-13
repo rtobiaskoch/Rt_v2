@@ -76,7 +76,7 @@ var_data = var_import %>%
   mutate(Date = as.Date(Date)) #converts date from string to date for merging
 
 #*******************************************************************************
-##### Covidestim.org#####
+##### COVID ESTIM DATA CLEAN#####
 #*#*******************************************************************************
 #will need to read in cases from downloaded csv from covidestim.org 
 #that is put it your working directory this is done in line 48 in the data import section
