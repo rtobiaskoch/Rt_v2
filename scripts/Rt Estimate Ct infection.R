@@ -99,6 +99,9 @@ var_data = var_import %>%
   rename_at(vars(ends_with("AY.26")),
             funs(paste0("AY.26","_prop"))
              ) %>% #rename to match variables in rest of code
+  rename_at(vars(ends_with("AY.33")),
+            funs(paste0("AY.33","_prop"))
+  ) %>% 
   filter(!is.na(n)) %>% #removes blank columns
   mutate(Date = as.Date(Date)) #converts date from string to date for merging
 
@@ -128,11 +131,13 @@ var_merge = var_data %>%
          AY.3_infections        = infections*AY.3_prop,
          AY.4_infections        = infections*AY.4_prop,
          AY.25_infections    = infections*AY.25_prop,
-         AY.26_infections = infections*AY.26_prop) %>%
+         AY.26_infections = infections*AY.26_prop,
+         AY.33_infections = infections*AY.33_prop) %>%
   mutate(B.1.617.2_n        = n*B.1.617.2_prop,
          AY.3_n        = n*AY.3_prop,
          AY.4_n        = n*AY.4_prop,
          AY.25_n    = n*AY.25_prop,
+         AY.33_n    = n*AY.33_prop,
          AY.26_n = n*AY.26_prop)
 
 #*******************************************************************************
@@ -146,18 +151,21 @@ daily_7<- var_merge %>%
          AY.3_n7 =         rollmean(AY.3_n, k = 7, fill = NA),
          AY.26_n7 =  rollmean(AY.26_n, k = 7, fill = NA),
          AY.25_n7 =     rollmean(AY.25_n, k = 7, fill = NA),
+         AY.33_n7 =     rollmean(AY.33_n, k = 7, fill = NA),
          n_7 =              rollmean(n, k = 7, fill = NA)) %>%
   #7 day rolling avg for frequency(prop aka proportion)
   mutate(B.1.617.2_prop7 =         rollmean(B.1.617.2_prop, k = 7, fill = NA),
          AY.4_prop7 =         rollmean(AY.4_prop, k = 7, fill = NA),
          AY.3_prop7 =         rollmean(AY.3_prop, k = 7, fill = NA),
          AY.26_prop7 =  rollmean(AY.26_prop, k = 7, fill = NA),
+         AY.33_prop7 =  rollmean(AY.33_prop, k = 7, fill = NA),
          AY.25_prop7 =     rollmean(AY.25_prop, k = 7, fill = NA))%>%
   #7 day rolling avg calculate by 7 day roll avg frequency pf variant * new infections
   mutate(B.1.617.2_infections7 = B.1.617.2_prop7 * infections,
          AY.4_infections7 = AY.4_prop7 * infections,
          AY.3_infections7 = AY.3_prop7 * infections,
          AY.26_infections7 = AY.26_prop7 * infections,
+         AY.33_infections7 = AY.33_prop7 * infections,
          AY.25_infections7 = AY.25_prop7 * infections) %>%
   drop_na #drops future dates and first 3 days because of rollmean 
 
@@ -199,6 +207,7 @@ B.1.617.2_df = ci_fun(daily_7$B.1.617.2_n7, daily_7$n_7, "B.1.617.2")
 AY.4_df = ci_fun(daily_7$AY.4_n7, daily_7$n_7, "AY.4")
 AY.3_df = ci_fun(daily_7$AY.3_n7, daily_7$n_7, "AY.3")
 AY.26_df = ci_fun(daily_7$AY.26_n7, daily_7$n_7, "AY.26")
+AY.33_df = ci_fun(daily_7$AY.33_n7, daily_7$n_7, "AY.33")
 AY.25_df = ci_fun(daily_7$AY.25_n7, daily_7$n_7, "AY.25")
 
 #*******************************************************************************
@@ -261,7 +270,7 @@ AY.4_rt = rt_fun(AY.4_df, "AY.4")
 AY.26_rt = rt_fun(AY.26_df, "AY.26")
 AY.25_rt = rt_fun(AY.25_df, "AY.25")
 AY.3_rt = rt_fun(AY.3_df, "AY.3")
-
+AY.33_rt = rt_fun(AY.3_df, "AY.33")
 
 
 #*******************************************************************************
@@ -272,6 +281,7 @@ rt_list = list(B.1.617.2_rt,
                AY.4_rt,
                AY.3_rt,
                AY.26_rt,
+               AY.33_rt,
                AY.25_rt)
 
 #new merged file that selects only the necessary variables
@@ -290,6 +300,9 @@ rt_export <- rt_list %>%
          AY.25_Rt, #AY.25
          AY.25_rtlowci,
          AY.25_rtupci,
+         AY.33_Rt, #AY.33
+         AY.33_rtlowci,
+         AY.33_rtupci,
          AY.26_Rt, #AY.26
          AY.26_rtlowci,
          AY.26_rtupci
@@ -381,9 +394,21 @@ rt_export2 = rt_export %>%
                               ")",sep =""),
             `AY.25-low` = AY.25_rtlowci,
             `AY.25-high` = AY.25_rtupci,
-            #OTHER
-            Other = AY.26_Rt, 
-            `Other-CI` = paste(month(Date),"/",day(Date),
+            #AY.33
+            AY.33 = AY.33_Rt, 
+            `AY.33-CI` = paste(month(Date),"/",day(Date),
+                               ": ", 
+                               AY.33_Rt,
+                               " (",
+                               AY.33_rtlowci,
+                               ", ",
+                               AY.33_rtupci,
+                               ")",sep =""),
+            `AY.33-low` = AY.33_rtlowci,
+            `AY.33-high` = AY.33_rtupci,
+            #AY.26
+            AY.26 = AY.26_Rt, 
+            `AY.26-CI` = paste(month(Date),"/",day(Date),
                                ": ", 
                                AY.26_Rt,
                                " (",
@@ -391,8 +416,8 @@ rt_export2 = rt_export %>%
                                ", ",
                                AY.26_rtupci,
                                ")",sep =""),
-            `Other-low` = AY.26_rtlowci,
-            `Other-high` = AY.26_rtupci,
+            `AY.26-low` = AY.26_rtlowci,
+            `AY.26-high` = AY.26_rtupci,
   )
 #*******************************************************************************
 #EXPORT####
@@ -422,6 +447,10 @@ write.csv(rt_export2, rt_reformat_name)
 #print the plot for double check
 png("data_output/rt_plot.png", width = 800, height = 400)
 p
+dev.off()
+
+png("data_output/rt_plot_ci.png", width = 800, height = 400)
+p_ci
 dev.off()
 
 
