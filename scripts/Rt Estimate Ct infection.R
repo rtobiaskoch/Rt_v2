@@ -56,7 +56,7 @@ infect_import = read.csv("data_input/estimates.csv")
 #                                        )
 #         )
 
-var_data = var_import %>%
+var_data_nest = var_import %>%
   nest(variant = starts_with("Freq", ignore.case = T))%>% 
   filter(!is.na(n)) %>% #removes blank columns
   mutate(Date = as.Date(Date)) #converts date from string to date for merging
@@ -66,7 +66,7 @@ var_data = var_import %>%
   mutate(Date = as.Date(Date)) %>% #converts date from string to date for merging
   pivot_longer(cols = starts_with("Freq"),
                names_to = "variant") %>%
-  mutate(variant = str_remove(variant, "Freq.")) %>%
+  mutate(variant = str_replace(variant, "Freq.", "variant_")) %>%
   rename(freq = value)
 
 
@@ -90,12 +90,15 @@ infect = infect_import %>%
 #*******************************************************************************
 #####MERGE DATA#####
 #*#*******************************************************************************
+#work with data as variants pivoted longer
 var_merge = var_data %>%
   left_join(infect, by = "Date") %>% #merges jhop data with our data and keeps only 
   mutate(var_infections = infections * freq,
-         var_n          = n *freq,
-         var_n7         = rollmean(n, k = 7, fill = NA)
-         )
+         var_n          = n *freq) %>% #need to pivot on days to do 7 day rolling average
+  pivot_wider(variant, names_to)
+
+
+#STUCK AT ROLL MEAN
 
 #*******************************************************************************
 #####ROLLING 7 DAY AVG FOR RT #####
