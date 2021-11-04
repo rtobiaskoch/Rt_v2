@@ -36,14 +36,6 @@ set.seed(1234)
 #####DATA IMPORT#####
 #*#*******************************************************************************
 
-#importing rt data from CT-Yale Variant results googlesheet
-#if you don't have access to the sheet or can't get googlesheets to work download
-#and import it
-
-#GOOGLESHEET DOWNLOAD FROM GRUBAUGH LABS GDRIVE
-#note that column names will be slightly different
-#var_import <- read_sheet("12xYePgxeF3pi0YiGnDCzmBnPPqZEASuobZ1DXeWZ7QA", sheet = "Rt")
-
 #this is aggregated state variant frequency data
 #please see readme for example format
 var_import = read.csv("data_input/variant_frequencies.csv")
@@ -56,22 +48,7 @@ infect_import = read.csv("data_input/estimates.csv")
 #*******************************************************************************
 #*******************************************************************************
 # #list function 
-# 
-# var_list = c("B.1.617.2", "AY.3", "AY.4", "AY.25", "AY.44", "AY.39")
-# 
-# #experimental for loop not working
-# for(i in seq_along(var_list)) {
-#   x = c(print(i) )
-# var_data =  var_import %>%
-#     rename_at(vars(ends_with(var_list[i])),
-#               funs(paste0(var_list[i],"_prop"))
-#     )
-# }
-# 
-# #experimental map function to accomplish below not working
-# var_data = var_import %>%
-#   nest(variants = -c("Date", "EW", "n"))
-# 
+
 # map2(colnames(var_data$variants), var_list, ~(.x %>%
 #                                          rename_at(vars(ends_with(.y)),
 #                                                    funs(paste0(.y,"_prop"))
@@ -79,32 +56,19 @@ infect_import = read.csv("data_input/estimates.csv")
 #                                        )
 #         )
 
-#*******************************************************************************
-#*******************************************************************************
-
-
-#identifies variant columns and renames them to the format of the rest of previously written code
 var_data = var_import %>%
-  rename_at(vars(ends_with("B.1.617.2")),
-                 funs(paste0("B.1.617.2","_prop"))
-            ) %>%
-  rename_at(vars(ends_with("AY.3")),
-            funs(paste0("AY.3","_prop"))
-            ) %>%
-  rename_at(vars(ends_with("AY.4")),
-            funs(paste0("AY.4","_prop"))
-             ) %>%
-  rename_at(vars(ends_with("AY.25")),
-            funs(paste0("AY.25","_prop"))
-            ) %>%
-  rename_at(vars(ends_with("AY.44")),
-            funs(paste0("AY.44","_prop"))
-             ) %>% #rename to match variables in rest of code
-  rename_at(vars(ends_with("AY.39")),
-            funs(paste0("AY.39","_prop"))
-  ) %>% 
+  nest(variant = starts_with("Freq", ignore.case = T))%>% 
   filter(!is.na(n)) %>% #removes blank columns
   mutate(Date = as.Date(Date)) #converts date from string to date for merging
+
+var_data = var_import %>%
+  filter(!is.na(n)) %>% #removes blank columns
+  mutate(Date = as.Date(Date)) %>% #converts date from string to date for merging
+  pivot_longer(cols = starts_with("Freq"),
+               names_to = "variant") %>%
+  mutate(variant = str_remove(variant, "Freq.")) %>%
+  rename(freq = value)
+
 
 #*******************************************************************************
 ##### COVID ESTIM DATA CLEAN#####
@@ -128,18 +92,10 @@ infect = infect_import %>%
 #*#*******************************************************************************
 var_merge = var_data %>%
   left_join(infect, by = "Date") %>% #merges jhop data with our data and keeps only 
-  mutate(B.1.617.2_infections        = infections*B.1.617.2_prop,
-         AY.3_infections        = infections*AY.3_prop,
-         AY.4_infections        = infections*AY.4_prop,
-         AY.25_infections    = infections*AY.25_prop,
-         AY.44_infections = infections*AY.44_prop,
-         AY.39_infections = infections*AY.39_prop) %>%
-  mutate(B.1.617.2_n        = n*B.1.617.2_prop,
-         AY.3_n        = n*AY.3_prop,
-         AY.4_n        = n*AY.4_prop,
-         AY.25_n    = n*AY.25_prop,
-         AY.39_n    = n*AY.39_prop,
-         AY.44_n = n*AY.44_prop)
+  mutate(var_infections = infections * freq,
+         var_n          = n *freq,
+         var_n7         = rollmean(n, k = 7, fill = NA)
+         )
 
 #*******************************************************************************
 #####ROLLING 7 DAY AVG FOR RT #####
