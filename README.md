@@ -41,12 +41,22 @@ EDITING CODE: Rt Estimate Ct Infections.R
 2. VARIANTS:
      -The variants calculated in this script are as follows: "alpha","gamma", "iota", "delta", "b.1.621".
      -If you wish to add more, you would need to add the new variants throughout the script
-     
+
+SUMMARY CALCULATIONS BEING DONE
+1. {Variant}_infections = (relative number of variant sequenced) * infections
+2. {Variant}_n = (relative number of variant sequenced)*(absolute number of samples sequenced)
+3. {Variant}7 = 7 day rolling average
+4. {Variant}_low/upci = binomCI(two sided, method jeffreys)
+5. {Variant}_Rt = estimate_R + smooth spline
+
  OUTPUT
  Code will output 3 files:
- 1. a plot of the Rt values
- 2. the Rt_estimate.csv
- 3. reformatted Rt_estimates (this is specific to the covidtrackerCt.com website)
+ 1. plot of the Rt values
+ 2. plot of Rt values with CI
+ 3. the Rt_estimate.csv
+ 4. reformatted Rt_estimates (this is specific to the covidtrackerCt.com website)
 
-
+CITATIONS
+Estimate_R
+Anne Cori, Neil M. Ferguson, Christophe Fraser, Simon Cauchemez, A New Framework and Software to Estimate Time-Varying Reproduction Numbers During Epidemics, American Journal of Epidemiology, Volume 178, Issue 9, 1 November 2013, Pages 1505–1512, https://doi.org/10.1093/aje/kwt133
 
