@@ -28,13 +28,21 @@ package.check <- lapply(
   }
 )
 
-rm(packages)
+rm(packages, package.check)
 
 set.seed(1234)
 
 #*******************************************************************************
 #####DATA IMPORT#####
 #*#*******************************************************************************
+
+#importing rt data from CT-Yale Variant results googlesheet
+#if you don't have access to the sheet or can't get googlesheets to work download
+#and import it
+
+#GOOGLESHEET DOWNLOAD FROM GRUBAUGH LABS GDRIVE
+#note that column names will be slightly different
+#var_import <- read_sheet("12xYePgxeF3pi0YiGnDCzmBnPPqZEASuobZ1DXeWZ7QA", sheet = "Rt")
 
 #this is aggregated state variant frequency data
 #please see readme for example format
@@ -45,30 +53,28 @@ infect_import = read.csv("data_input/estimates.csv")
 #####GLAB DATA CLEAN#####
 #*#*******************************************************************************
 
-#*******************************************************************************
-#*******************************************************************************
-# #list function 
-
-# map2(colnames(var_data$variants), var_list, ~(.x %>%
-#                                          rename_at(vars(ends_with(.y)),
-#                                                    funs(paste0(.y,"_prop"))
-#                                                   )
-#                                        )
-#         )
-
-var_data_nest = var_import %>%
-  nest(variant = starts_with("Freq", ignore.case = T))%>% 
+#identifies variant columns and renames them to the format of the rest of previously written code
+var_data = var_import %>%
+  rename_at(vars(ends_with("B.1.617.2")),
+            funs(paste0("B.1.617.2","_prop"))
+  ) %>%
+  rename_at(vars(ends_with("AY.3")),
+            funs(paste0("AY.3","_prop"))
+  ) %>%
+  # rename_at(vars(ends_with("AY.4")),
+  #           funs(paste0("AY.4","_prop"))
+ # ) %>%
+  rename_at(vars(ends_with("AY.25")),
+            funs(paste0("AY.25","_prop"))
+  ) %>%
+  rename_at(vars(ends_with("AY.44")),
+            funs(paste0("AY.44","_prop"))
+  ) %>% #rename to match variables in rest of code
+  rename_at(vars(ends_with("AY.39")),
+            funs(paste0("AY.39","_prop"))
+  ) %>% 
   filter(!is.na(n)) %>% #removes blank columns
   mutate(Date = as.Date(Date)) #converts date from string to date for merging
-
-var_data = var_import %>%
-  filter(!is.na(n)) %>% #removes blank columns
-  mutate(Date = as.Date(Date)) %>% #converts date from string to date for merging
-  pivot_longer(cols = starts_with("Freq"),
-               names_to = "variant") %>%
-  mutate(variant = str_replace(variant, "Freq.", "variant_")) %>%
-  rename(freq = value)
-
 
 #*******************************************************************************
 ##### COVID ESTIM DATA CLEAN#####
@@ -90,15 +96,20 @@ infect = infect_import %>%
 #*******************************************************************************
 #####MERGE DATA#####
 #*#*******************************************************************************
-#work with data as variants pivoted longer
 var_merge = var_data %>%
   left_join(infect, by = "Date") %>% #merges jhop data with our data and keeps only 
-  mutate(var_infections = infections * freq,
-         var_n          = n *freq) %>% #need to pivot on days to do 7 day rolling average
-  pivot_wider(variant, names_to)
-
-
-#STUCK AT ROLL MEAN
+  mutate(B.1.617.2_infections        = infections*B.1.617.2_prop,
+         AY.3_infections        = infections*AY.3_prop,
+         # AY.4_infections        = infections*AY.4_prop,
+         AY.25_infections    = infections*AY.25_prop,
+         AY.44_infections = infections*AY.44_prop,
+         AY.39_infections = infections*AY.39_prop) %>%
+  mutate(B.1.617.2_n        = n*B.1.617.2_prop,
+         AY.3_n        = n*AY.3_prop,
+        # AY.4_n        = n*AY.4_prop,
+         AY.25_n    = n*AY.25_prop,
+         AY.39_n    = n*AY.39_prop,
+         AY.44_n = n*AY.44_prop)
 
 #*******************************************************************************
 #####ROLLING 7 DAY AVG FOR RT #####
@@ -107,7 +118,7 @@ var_merge = var_data %>%
 daily_7<- var_merge %>%
   #7 day rolling avg for samples sequenced
   mutate(B.1.617.2_n7 =         rollmean(B.1.617.2_n, k = 7, fill = NA),
-         AY.4_n7 =         rollmean(AY.4_n, k = 7, fill = NA),
+         # AY.4_n7 =         rollmean(AY.4_n, k = 7, fill = NA),
          AY.3_n7 =         rollmean(AY.3_n, k = 7, fill = NA),
          AY.44_n7 =  rollmean(AY.44_n, k = 7, fill = NA),
          AY.25_n7 =     rollmean(AY.25_n, k = 7, fill = NA),
@@ -115,14 +126,14 @@ daily_7<- var_merge %>%
          n_7 =              rollmean(n, k = 7, fill = NA)) %>%
   #7 day rolling avg for frequency(prop aka proportion)
   mutate(B.1.617.2_prop7 =         rollmean(B.1.617.2_prop, k = 7, fill = NA),
-         AY.4_prop7 =         rollmean(AY.4_prop, k = 7, fill = NA),
+         # AY.4_prop7 =         rollmean(AY.4_prop, k = 7, fill = NA),
          AY.3_prop7 =         rollmean(AY.3_prop, k = 7, fill = NA),
          AY.44_prop7 =  rollmean(AY.44_prop, k = 7, fill = NA),
          AY.39_prop7 =  rollmean(AY.39_prop, k = 7, fill = NA),
          AY.25_prop7 =     rollmean(AY.25_prop, k = 7, fill = NA))%>%
   #7 day rolling avg calculate by 7 day roll avg frequency pf variant * new infections
   mutate(B.1.617.2_infections7 = B.1.617.2_prop7 * infections,
-         AY.4_infections7 = AY.4_prop7 * infections,
+         # AY.4_infections7 = AY.4_prop7 * infections,
          AY.3_infections7 = AY.3_prop7 * infections,
          AY.44_infections7 = AY.44_prop7 * infections,
          AY.39_infections7 = AY.39_prop7 * infections,
@@ -164,7 +175,7 @@ ci_fun <- function(v, nn, name, c){
 
 
 B.1.617.2_df = ci_fun(daily_7$B.1.617.2_n7, daily_7$n_7, "B.1.617.2")
-AY.4_df = ci_fun(daily_7$AY.4_n7, daily_7$n_7, "AY.4")
+# AY.4_df = ci_fun(daily_7$AY.4_n7, daily_7$n_7, "AY.4")
 AY.3_df = ci_fun(daily_7$AY.3_n7, daily_7$n_7, "AY.3")
 AY.44_df = ci_fun(daily_7$AY.44_n7, daily_7$n_7, "AY.44")
 AY.39_df = ci_fun(daily_7$AY.39_n7, daily_7$n_7, "AY.39")
@@ -226,7 +237,7 @@ rt_fun= function(df, name){
 }
 
 B.1.617.2_rt = rt_fun(B.1.617.2_df, "B.1.617.2")
-AY.4_rt = rt_fun(AY.4_df, "AY.4")
+# AY.4_rt = rt_fun(AY.4_df, "AY.4")
 AY.44_rt = rt_fun(AY.44_df, "AY.44")
 AY.25_rt = rt_fun(AY.25_df, "AY.25")
 AY.3_rt = rt_fun(AY.3_df, "AY.3")
@@ -238,7 +249,7 @@ AY.39_rt = rt_fun(AY.39_df, "AY.39")
 #*******************************************************************************
 #me trying to extract the rt's in the join
 rt_list = list(B.1.617.2_rt,
-               AY.4_rt,
+               # AY.4_rt,
                AY.3_rt,
                AY.44_rt,
                AY.39_rt,
@@ -251,9 +262,9 @@ rt_export <- rt_list %>%
          B.1.617.2_Rt, #B.1.617.2
          B.1.617.2_rtlowci,
          B.1.617.2_rtupci,
-         AY.4_Rt, #AY.4
-         AY.4_rtlowci,
-         AY.4_rtupci,
+         # # AY.4_Rt, #AY.4
+         # AY.4_rtlowci,
+         # AY.4_rtupci,
          AY.3_Rt, #AY.3
          AY.3_rtlowci,
          AY.3_rtupci,
@@ -286,14 +297,14 @@ rt_plot = rt_export %>%
 
 p <- rt_plot %>%
   ggplot(aes(x = Date, y = Rt, color = variant, fill = variant)) +
-        geom_line()
+  geom_line()
 
 p_ci <- p +
-        geom_ribbon(aes(ymin = rtlowci, ymax = rtupci, fill = variant), 
-                                               alpha=0.1, 
-                                              linetype="dashed",
-                                               color="grey")
-                        
+  geom_ribbon(aes(ymin = rtlowci, ymax = rtupci, fill = variant), 
+              alpha=0.1, 
+              linetype="blank",
+              color="grey")
+
 
 #*******************************************************************************
 #REFORMAT####
@@ -309,49 +320,49 @@ rt_export2 = rt_export %>%
             #B.1.617.2
             B.1.617.2 = B.1.617.2_Rt,
             `B.1.617.2-CI` = paste(month(Date),"/",day(Date),
-                               ": ", 
-                               B.1.617.2_Rt,
-                               " (",
-                               B.1.617.2_rtlowci,
-                               ", ",
-                               B.1.617.2_rtupci,
-                               ")",sep =""),
+                                   ": ", 
+                                   B.1.617.2_Rt,
+                                   " (",
+                                   B.1.617.2_rtlowci,
+                                   ", ",
+                                   B.1.617.2_rtupci,
+                                   ")",sep =""),
             `B.1.617.2-low` = B.1.617.2_rtlowci,
             `B.1.617.2-high` = B.1.617.2_rtupci,
             #AY.3
             AY.3 = AY.3_Rt,
             `AY.3-CI` = paste(month(Date),"/",day(Date),
-                               ": ", 
-                               AY.3_Rt,
-                               " (",
-                               AY.3_rtlowci,
-                               ", ",
-                               AY.3_rtupci,
-                               ")",sep =""),
+                              ": ", 
+                              AY.3_Rt,
+                              " (",
+                              AY.3_rtlowci,
+                              ", ",
+                              AY.3_rtupci,
+                              ")",sep =""),
             `AY.3-low` = AY.3_rtlowci,
             `AY.3-high` = AY.3_rtupci,
             #AY.4
-            AY.4 = AY.4_Rt, 
-            `AY.4-CI` = paste(month(Date),"/",day(Date),
-                               ": ", 
-                               AY.4_Rt,
-                               " (",
-                               AY.4_rtlowci,
-                               ", ",
-                               AY.4_rtupci,
-                               ")",sep =""),
-            `AY.4-low` = AY.4_rtlowci,
-            `AY.4-high` = AY.4_rtupci,
+            # AY.4 = AY.4_Rt, 
+            # `AY.4-CI` = paste(month(Date),"/",day(Date),
+            #                   ": ", 
+            #                   AY.4_Rt,
+            #                   " (",
+            #                   AY.4_rtlowci,
+            #                   ", ",
+            #                   AY.4_rtupci,
+            #                   ")",sep =""),
+            # `AY.4-low` = AY.4_rtlowci,
+            # `AY.4-high` = AY.4_rtupci,
             #AY.25
             AY.25 = AY.25_Rt, 
             `AY.25-CI` = paste(month(Date),"/",day(Date),
-                              ": ", 
-                              AY.25_Rt,
-                              " (",
-                              AY.25_rtlowci,
-                              ", ",
-                              AY.25_rtupci,
-                              ")",sep =""),
+                               ": ", 
+                               AY.25_Rt,
+                               " (",
+                               AY.25_rtlowci,
+                               ", ",
+                               AY.25_rtupci,
+                               ")",sep =""),
             `AY.25-low` = AY.25_rtlowci,
             `AY.25-high` = AY.25_rtupci,
             #AY.39
@@ -412,11 +423,3 @@ dev.off()
 png("data_output/rt_plot_ci.png", width = 800, height = 400)
 p_ci
 dev.off()
-
-
-
-
-
-
-
-
